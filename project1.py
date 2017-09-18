@@ -262,10 +262,20 @@ a=np.multiply(a,np.conj(a))
 a=a.real
 a=a.round(12)
 
+at=np.transpose(a)
+at=at.tolist()
+at=at[0]
+#randomly measuring
 
+m=np.random.choice(2**numWires,1000,p=at)
+
+import matplotlib.pyplot as plt
+plt.hist(m,bins=8,range=(0,2**numWires-1))
+plt.title("measurements from circuit")
+plt.show()
 
 print(a)
 print()
-print(x)
+
 
 
