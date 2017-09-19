@@ -222,10 +222,11 @@ numWires=myInput[0]
 myInput=myInput[1]
 
 i=0
+Measure=False
 while i<len(myInput):
-    if myInput[i]=='Measure':
+    if myInput[i][0]=='Measure':
+        Measure=True
         break
-    
     gate=myInput[i][0]
     gateParams=np.array([])
     j=1
@@ -250,32 +251,60 @@ while i<len(myInput):
         x=np.dot(matrix,x)
     i=i+1
 
+#function to parse file myInputState.txt
+def ReadInput1(fileName):
+    myInput_lines=open(fileName).readlines()
+    myInput=[]
+    for line in myInput_lines[0:]:
+        myInput.append(line.split())
+    return (myInput)
 
-v=np.array([np.sqrt(1),np.sqrt(0),np.sqrt(0),np.sqrt(0),np.sqrt(0),np.sqrt(0),np.sqrt(0),np.sqrt(0)])
-v=np.reshape(v,(8,1))
+#get input from myInputState.txt
+R=ReadInput1("myInputState.txt")
+v=np.array([])
+
+#sigfigs is used for a procedure with multiplying float numbers late
+sigfigs=0
+for i in range(len(R)):
+    v=np.append(v,complex(float(R[i][0]),float(R[i][1])))
+    if len(R[i][0])>sigfigs or len(R[i][1])>sigfigs:
+        if len(R[i][0])>len(R[i][1]):
+            sigfigs=len(R[i][0])-2
+        else:
+            sigfigs=len(R[i][1])-2
+            
+v=np.reshape(v,(2**numWires,1))
 
 a=np.dot(x,v)
+a=np.multiply(a,10**sigfigs)
 l=np.dot(np.reshape(a,(1,8)),np.conjugate(a))
+l=np.multiply(l,10**(-2*sigfigs))
+l=round(l[0][0],2) 
 print("vv*_dagger: ",l)
 print()
 a=np.multiply(a,np.conj(a))
+a=np.multiply(a,10**(-2*sigfigs))
 a=a.real
-a=a.round(12)
+a=a.round(3)
 
-at=np.transpose(a)
-at=at.tolist()
-at=at[0]
-#randomly measuring
 
-m=np.random.choice(2**numWires,1000,p=at)
 
-import matplotlib.pyplot as plt
-plt.hist(m,bins=8,range=(0,2**numWires-1))
-plt.title("measurements from circuit")
-plt.show()
-
+print("output vector:")
 print(a)
 print()
+#randomly measuring
+if Measure:
+    import matplotlib.pyplot as plt
+   
+    at=np.transpose(a)
+    at=at.tolist()
+    at=at[0]
 
+    m=np.random.choice(2**numWires,1000,p=at)
+    
+    plt.hist(m,bins=8,range=(0,2**numWires-1))
+    plt.title("measurements from circuit")
+    plt.show()
+    print()
 
 
