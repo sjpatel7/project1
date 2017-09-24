@@ -27,6 +27,10 @@ I = np.array([[1,0],[0,1]])
 global S   #Swapping two wires (CNOT1*CNOT2*CNOT1)
 S = np.array([[1,0,0,0],[0,0,1,0],[0,1,0,0],[0,0,0,1]])
 
+def CPG(theta):
+    CPG = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,np.e**(theta*1j)]])
+    return CPG
+
 # this should apply Hadamard gate to wire i out of k wires
 def HadamardArray(i, k):
     n = 0 #wire we're on (building the matrix one wire at a time)
@@ -59,6 +63,9 @@ def InvPhaseArray(i,k,theta):
 def InvCNOTArray(cw,ow,tw):
     invCNOT= np.linalg.inv(CNOTArray(cw,ow,tw))
     return invCNOT
+def InvCPGate(cw,ow,theta,tw):
+    invCPGate = np.linalg.inv(CPGate(cw,ow,theta,tw))
+    return invCPGate
 
 # this should apply Phase theta to wire i out of k wires
 def PhaseArray(i, k,theta):
@@ -201,6 +208,67 @@ def Swap(firstWire,secondWire,totalWires):
             sw = sw - 1
     return matrix
 
+#controlled-phase gate
+def CPGate(cw,ow,theta,tw):
+    #wire we are on
+    n = 0
+    noSwaps = True #initial condition if no swaps or operations have been made
+    matrix = np.eye(2**tw)  #this is the resulting matrix of the CNOT, initialized to identity
+
+    if cw < ow - 1:
+        matrix = Swap(cw,ow - 1,tw)
+        cw = ow - 1
+        noSwaps = False
+    
+    if cw > ow + 1:
+        matrix = Swap(cw,ow + 1,tw)
+        cw = ow + 1
+        noSwaps = False
+             
+#if control wire is one above (in diagram) the other wire
+    matrix_RN = np.eye(2**tw)
+    if cw == ow + 1:
+        if ow == 0:
+            matrix_RN = CPG(theta)
+            n = n + 2
+            while n < tw:
+                matrix_RN = np.kron(matrix_RN,I)
+                n = n + 1
+        if ow > 0:
+            matrix_RN = I
+            n = n + 1
+            while n < ow:
+                matrix_RN = np.kron(matrix_RN,I)
+                n = n + 1
+            matrix_RN = np.kron(matrix_RN,CPG(theta))
+            n = n + 2
+            while n < tw:
+                matrix_RN = np.kron(matrix_RN,I)
+                n = n + 1
+    if cw == (ow - 1):      
+        if cw == 0:
+            matrix_RN = CPG(theta)
+            n = n + 2
+            while n < tw:
+                matrix_RN = np.kron(matrix_RN,I)
+                n = n + 1
+        if cw > 0:
+            matrix_RN = I
+            n = n + 1
+            while n < cw:
+                matrix_RN = np.kron(matrix_RN,I)
+                n = n + 1
+            matrix_RN = np.kron(matrix_RN,CPG(theta))
+            n = n + 2
+            while n < tw:
+                matrix_RN = np.kron(matrix_RN,I)
+                n = n + 1
+    if noSwaps:
+        matrix = matrix_RN
+    else:
+        matrix = np.dot(matrix,np.dot(matrix_RN,matrix))
+    return matrix
+    
 #random ciruit generator (this was used for testing various circuits)
 def RandomCircuit():
     myInput=open("randomCircuit.txt","w")
@@ -266,6 +334,8 @@ while i < len(myInput):
             matrix = PhaseArray(int(gateParams[0]),numWires,float(gateParams[1]))
         if gate == 'CNOT':
             matrix = CNOTArray(int(gateParams[0]),int(gateParams[1]),numWires)
+        if gate == 'CPG':
+            matrix = CPGate(int(gateParams[0]),int(gateParams[1]),float(gateParams[2]),numWires)
         x=matrix
     if i>0:
         if gate=='H':
@@ -274,13 +344,17 @@ while i < len(myInput):
             matrix=PhaseArray(int(gateParams[0]),numWires,float(gateParams[1]))
         if gate=='CNOT':
             matrix=CNOTArray(int(gateParams[0]),int(gateParams[1]),numWires)
-        
+        if gate == 'CPG':
+            matrix = CPGate(int(gateParams[0]),int(gateParams[1]),float(gateParams[2]),numWires)
+            
         if gate=='H_i':
             matrix = InvHadamardArray(int(gateParams[0]),numWires)
         if gate=='P_i':
             matrix = InvPhaseArray(int(gateParams[0]),numWires,float(gateParams[1]))
         if gate == 'CNOT_i':
             matrix= InvCNOTArray(int(gateParams[0]),int(gateParams[1]),numWires)
+        if gate == 'CPG_i':
+            matrix = InvCPGate(int(gateParams[0]),int(gateParams[1]),float(gateParams[2]),numWires)
         x=np.dot(matrix,x)
     i=i+1
 
@@ -308,6 +382,7 @@ for i in range(len(R)):
             
 v=np.reshape(v,(2**numWires,1))
 
+Swap(0,2,3)
 a=np.dot(x,v)
 #print("output of circuit with inverse circuit added\n")
 #print(a.round(5))
@@ -343,13 +418,42 @@ if Measure:
             at = np.append(at,remainder)
             numBins = 2 ** numWires + 1
         
-    measurements=np.random.choice(numBins,1000,p = at)
+    measurements=np.random.choice(numBins,10000,p = at)
     
     plt.hist(measurements,bins = numBins,range = (0,2**numWires-1))
     plt.title("measurements from circuit")
     plt.show()
     print()
 
+#QFT
+myInput = ReadInput("QFT.txt")
+numWires = myInput[0]
+myInput = myInput[1]
 
-#swap and control phase are necesary for shor's algorithm
+i = 0
+Measure = False
+#this gate builds the matrix from the circuit file 
+while i < len(myInput):
+    gate = myInput[i][0]  #first character on line specifies gate
+    gateParams = np.array([])
+    j = 1
+    while j < len(myInput[i]):     
+        gateParams = np.append(gateParams,myInput[i][j])
+        j = j + 1
+    if i == 0: #if this is the first gate
+        if gate == 'H':
+            matrix = HadamardArray(int(gateParams[0]),numWires)
+        if gate == 'CPG':
+            matrix = CPGate(int(gateParams[0]),int(gateParams[1]),float(gateParams[2]),numWires)
+        x1 = matrix
+    if i>0:
+        if gate=='H':
+            matrix=HadamardArray(int(gateParams[0]),numWires)
+        if gate == 'CPG':
+            matrix = CPGate(int(gateParams[0]),int(gateParams[1]),float(gateParams[2]),numWires)
+        x1 = np.dot(matrix,x1)
+    i=i+1
 
+output = np.dot(x1,v)
+print("Output of QFT")
+print(output)
