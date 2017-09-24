@@ -91,11 +91,36 @@ def CNOTArray(controlWire,otherWire,totalWires):
     noSwaps = True #initial condition if no swaps or operations have been made
     matrix = np.eye(2**tw)  #this is the resulting matrix of the CNOT, initialized to identity
 
-    if cw != ow -1:
+    if cw < ow - 1:
         matrix = Swap(cw,ow - 1,tw)
         cw = ow - 1
         noSwaps = False
+    
+    if cw > ow + 1:
+        matrix = Swap(cw,ow + 1,tw)
+        cw = ow + 1
+        noSwaps = False
+             
 #if control wire is one above (in diagram) the other wire
+    matrix_RN = np.eye(2**tw)
+    if cw == ow + 1:
+        if ow == 0:
+            matrix_RN = H4
+            n = n + 2
+            while n < tw:
+                matrix_RN = np.kron(matrix_RN,I)
+                n = n + 1
+        if ow > 0:
+            matrix_RN = I
+            n = n + 1
+            while n < ow:
+                matrix_RN = np.kron(matrix_RN,I)
+                n = n + 1
+            matrix_RN = np.kron(matrix_RN,H4)
+            n = n + 2
+            while n < tw:
+                matrix_RN = np.kron(matrix_RN,I)
+                n = n + 1
     if cw == (ow - 1):      
         if cw == 0:
             matrix_RN = H3
@@ -114,10 +139,10 @@ def CNOTArray(controlWire,otherWire,totalWires):
             while n < tw:
                 matrix_RN = np.kron(matrix_RN,I)
                 n = n + 1
-            if noSwaps:
-                matrix = matrix_RN
-            else:
-                matrix = np.dot(matrix,np.dot(matrix_RN,matrix))
+    if noSwaps:
+        matrix = matrix_RN
+    else:
+        matrix = np.dot(matrix,np.dot(matrix_RN,matrix))
     return matrix
 
 def Swap(firstWire,secondWire,totalWires):
@@ -161,6 +186,7 @@ def Swap(firstWire,secondWire,totalWires):
     
     if sw > 0: #if sw is zero, then the whole swap is complete (wires 0 and 1 were switched)
         while sw != fw1:
+            n = 0
             matrix_RN = I
             n = n + 1
             while n < sw - 1:
@@ -173,8 +199,8 @@ def Swap(firstWire,secondWire,totalWires):
                 n = n + 1
             matrix = np.dot(matrix_RN,matrix)
             sw = sw - 1
-            n = 0
     return matrix
+
 #random ciruit generator (this was used for testing various circuits)
 def RandomCircuit():
     myInput=open("randomCircuit.txt","w")
@@ -204,7 +230,8 @@ def RandomCircuit():
             myInput.write("Measure")
             string = 'Measure'
     myInput.close()
-RandomCircuit()
+#RandomCircuit()
+x=CNOTArray(2,0,3)
 
 def ReadInput(fileName):
     myInput_lines = open(fileName).readlines()
@@ -282,9 +309,9 @@ for i in range(len(R)):
 v=np.reshape(v,(2**numWires,1))
 
 a=np.dot(x,v)
-print("output of circuit with inverse circuit added\n")
-print(a.round(5))
-print()
+#print("output of circuit with inverse circuit added\n")
+#print(a.round(5))
+#print()
 a=np.multiply(a,10**sigfigs)
 l=np.dot(np.reshape(a,(1,8)),np.conjugate(a))
 l=np.multiply(l,10**(-2*sigfigs))
@@ -296,21 +323,20 @@ a=np.multiply(a,10**(-2*sigfigs))
 a=a.real
 a=a.round(5)
 
-
-
+at=np.transpose(a)
 print("output vector:")
 print(a)
 print()
 #randomly measuring
 if Measure:
     import matplotlib.pyplot as plt
-   
-    at=np.transpose(a)
     at=at.tolist()
     at=at[0]
     numBins = 2 ** numWires
     if np.sum(at) != 1:
         remainder = 1 - np.sum(at)
+        if remainder!=0:
+            print("not unitary!!!!")
         if remainder < 0:
             at[np.argmax(at)] = at[np.argmax(at)] + remainder
         else:    
