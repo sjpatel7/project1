@@ -470,3 +470,19 @@ qftmatrix = qftmatrix/np.sqrt(size)
 output = np.dot(qftmatrix,v)
 print("Output of QFT (unitary matrix)")
 print(output)
+
+#j is a string of j2 j1 j0 
+#k is a string of k2 k1 k0
+def U(j,k):
+    phase = 0.0
+    for jBit in range(0,3):
+        for kBit in range(0,3):
+            phase = phase + addPhase(j[jBit],jBit,k[kBit],kBit)
+    return round(1/np.sqrt(size)*np.e**(2*np.pi*1.j*phase),10)
+def addPhase(jval,jbit,kval,kbit):
+    x = (jval+kval)*2**(jbit+kbit)
+    return x
+
+print()
+print(U([0,0,0],[0,0,1]))
+print(qftmatrix[0][1])
