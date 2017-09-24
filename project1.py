@@ -433,6 +433,7 @@ myInput = myInput[1]
 i = 0
 Measure = False
 #this gate builds the matrix from the circuit file 
+
 while i < len(myInput):
     gate = myInput[i][0]  #first character on line specifies gate
     gateParams = np.array([])
@@ -455,5 +456,17 @@ while i < len(myInput):
     i=i+1
 
 output = np.dot(x1,v)
-print("Output of QFT")
+print("Output of QFT circuit")
+print(output)
+
+
+size = 2**numWires
+qftmatrix = np.eye(size, dtype=complex)
+w = np.e**(2*np.pi*1j/size)
+for i in range(size):
+    for j in range(size):
+        qftmatrix[i][j] = w**(i*j)
+qftmatrix = qftmatrix/np.sqrt(size)
+output = np.dot(qftmatrix,v)
+print("Output of QFT (unitary matrix)")
 print(output)
