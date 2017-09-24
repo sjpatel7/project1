@@ -6,6 +6,7 @@ Created on Sun Sep 10 19:26:14 2017
 """
 
 import numpy as np
+from fractions import gcd
 
 global H1
 H1 = np.array([[1,1],[1,-1]]) / np.sqrt(2)
@@ -459,7 +460,6 @@ output = np.dot(x1,v)
 print("Output of QFT circuit")
 print(output)
 
-
 size = 2**numWires
 qftmatrix = np.eye(size, dtype=complex)
 w = np.e**(2*np.pi*1j/size)
@@ -478,11 +478,19 @@ def U(j,k):
     for jBit in range(0,3):
         for kBit in range(0,3):
             phase = phase + addPhase(j[jBit],jBit,k[kBit],kBit)
-    return round(1/np.sqrt(size)*np.e**(2*np.pi*1.j*phase),10)
+    return round(1/np.sqrt(size)*w**phase,10)
 def addPhase(jval,jbit,kval,kbit):
-    x = (jval+kval)*2**(jbit+kbit)
+    x = (jval*kval)*2**(2-jbit+2-kbit)
     return x
 
-print()
-print(U([0,0,0],[0,0,1]))
-print(qftmatrix[0][1])
+#this following code is a test to see if the U(j,k) function matches the unitary matrix
+jarray = [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,1]]
+karray = jarray
+QFTtest=np.eye(size,dtype=bool)
+Utest=np.eye(size,dtype=complex)
+for j in range(0,8):
+    for k in range(0,8):
+        QFTtest[j][k] = (np.around(U(jarray[j],karray[k]),3)==np.around(qftmatrix[j][k],3))
+        Utest[j][k]=np.around(U(jarray[j],karray[k]),3)
+QFTtest = QFTtest+np.zeros((8,8))
+print(size*size-np.count_nonzero(QFTtest))
